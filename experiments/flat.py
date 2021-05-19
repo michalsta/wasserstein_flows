@@ -123,6 +123,8 @@ class FlatGraph:
 
     def delta_cost(self, src, tgt):
         '''The change in cost that will happen if we send flow from src to tgt, and how many units of flow can we send at that cost'''
+        assert 0 <= src < len(self)
+        assert 0 <= tgt < len(self)
         if src == tgt:
             return (0.0, 0.0)
         cost, flow = self.yanking_out_of_abyss_cost(src)
@@ -184,7 +186,7 @@ class FlatGraph:
             dcost_right, fl_right = self.delta_cost(idx, right_idx)
             if dcost_right < 0.0:
                 break
-            right_idx -= 1
+            right_idx += 1
         if dcost_left >= 0.0 and dcost_right >= 0.0:
             return False
         if dcost_left < dcost_right:
@@ -192,7 +194,6 @@ class FlatGraph:
         else:
             self.send(idx, right_idx, fl_right)
         return True
-
 
 
     def pushout_optimize(self):
@@ -203,17 +204,23 @@ class FlatGraph:
 
 if __name__ == "__main__":
     from test_spectra import *
-    FG = FlatGraph(EXP, THEs, 1.0, 1.0)
-    print(str(FG))
-    print(FG.peak_summary(0))
-    print(FG.peak_summary(1))
-    print(FG.delta_cost(1, 0))
-#    print("Cost:", FG.total_cost(), FG.is_optimal())
-#    FG.send(1, 0, 1.0)
-    print("Cost:", FG.total_cost(), FG.is_optimal())
-    FG.pushout_optimize()
-#    FG.naive_optimize_once()
-    print("Cost:", FG.total_cost(), FG.is_optimal())
-#    FG.naive_optimize_once()
-#    print("Cost:", FG.total_cost(), FG.is_optimal())
-    FG.self_verify()
+    i = 0
+    while True:
+        i += 1
+        rerandomize(i)
+        LEXP, LTHEs = rerandomize()
+        FG = FlatGraph(LEXP, LTHEs, 1.0, 1.0)
+        print(str(FG))
+        print(FG.peak_summary(0))
+        print(FG.peak_summary(1))
+        print(FG.delta_cost(1, 0))
+    #    print("Cost:", FG.total_cost(), FG.is_optimal())
+    #    FG.send(1, 0, 1.0)
+        print("Cost:", FG.total_cost(), FG.is_optimal())
+        FG.pushout_optimize()
+    #    FG.naive_optimize_once()
+        print("Cost:", FG.total_cost(), FG.is_optimal())
+        assert FG.is_optimal()
+    #    FG.naive_optimize_once()
+    #    print("Cost:", FG.total_cost(), FG.is_optimal())
+        FG.self_verify()

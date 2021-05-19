@@ -45,10 +45,15 @@ LTHEs = [random_spectrum(std_dim) for x in range(no_thes)]
 def p(spectrum):
     print(list(spectrum.masses), list(spectrum.probs))
 
-def rerandomize():
+def rerandomize(seed = None):
+    global LEXP
+    global LTHEs
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
     LEXP = random_spectrum(std_dim)
     p(LEXP)
     LTHEs = [random_spectrum(std_dim) for x in range(no_thes)]
     print("THEs:")
     for x in LTHEs: p(x)
-    
+    return LEXP, LTHEs
