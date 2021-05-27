@@ -9,6 +9,7 @@ from nx_print import nx_print
 
 negative_penalty = 10000.0
 negative_const_penalty = 1e10
+do_prints = False
 
 def integerize_spectrum(spectrum):
     return [(label, integerize_single(prob)) for label, prob in spectrum]
@@ -57,7 +58,7 @@ class AbWSDistCalc:
 
     def set_point(self, point):
         assert len(point) == len(self.theoreticals)
-        print("Point:", point)
+        if do_prints: print("Point:", point)
 
         point = tuple(point)
         if self.realpoint == point:
@@ -65,8 +66,6 @@ class AbWSDistCalc:
 
         self.realpoint = point
         self.point = tuple(max(x, 0.0) for x in point)
-
-        print(self.point)
 
         edges_view = self.G.edges
         tot_the_f = 0
@@ -102,7 +101,9 @@ class AbWSDistCalc:
         neg_penalty = sum(0.0 if x >= 0.0 else -negative_penalty*x for x in self.realpoint)
 
         val = neg_penalty + tot_cost/(int_fact*int_fact)
-        print("Val:", val)
+
+        if do_prints: print("Val:", val)
+
         return val
 
 
@@ -125,7 +126,9 @@ class AbWSDistCalc:
 
         neg_penalty = np.array([0.0 if x >= 0.0 else -negative_penalty for x in self.realpoint])
         grad = neg_penalty + grad/int_fact
-        print("Grad:", grad)
+
+        if do_prints: print("Grad:", grad)
+
         return grad
 
     def value_at(self, point):
@@ -149,7 +152,7 @@ if __name__ == '__main__':
     def euclidean_distance(point1, point2):
         return math.sqrt(sum((x_i - y_i)*(x_i - y_i) for x_i, y_i in zip(point1, point2)))
 
-    wasserstein_distancer = AbWSDistCalc(EXP, [THE1, THE2], 500.0, 500.0, euclidean_distance)
+    wasserstein_distancer = AbWSDistCalc(EXP, [THE1, THE2], 5.0, 5.0, euclidean_distance)
 
     wasserstein_distancer.set_point([2.0, 5.0])
     print(wasserstein_distancer.value())
@@ -158,4 +161,4 @@ if __name__ == '__main__':
     print("------------------------")
     import scipy.optimize
 
-    print(scipy.optimize.minimize(wasserstein_distancer.value_at, [733.0, 2467.0], jac=wasserstein_distancer.gradient_at, method='BFGS'))
+    print(scipy.optimize.minimize(wasserstein_distancer.value_at, [12.0, 15.0], jac=wasserstein_distancer.gradient_at, method='SLSQP'))
