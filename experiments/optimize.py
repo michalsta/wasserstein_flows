@@ -5,7 +5,8 @@ import sys
 from pprint import pprint
 
 from parameters import int_fact, integerize
-
+from distances import awsd_checked as awsd
+from gradients import checked_grad
 
 def empiric_gradient(exp, the_l, point, exp_ab_cost, th_ab_cost):
     dval = 0.0001
@@ -15,7 +16,7 @@ def empiric_gradient(exp, the_l, point, exp_ab_cost, th_ab_cost):
     for i, sf in zip(the_l, point):
         i.scale(sf)
 
-    base = awsd(exp, the_l, exp_ab_cost, th_ab_cost)[0]
+    base = awsd(exp, the_l, exp_ab_cost, th_ab_cost)
     print("base:", base)
 
     for idx in range(len(the_l)):
@@ -23,8 +24,8 @@ def empiric_gradient(exp, the_l, point, exp_ab_cost, th_ab_cost):
         c.scale(dval + 1.0) #point[idx])
         n_the_l = the_l[:idx] + [c] + the_l[idx+1:]
         print("Aaa")
-        grpart = (awsd(exp, n_the_l, exp_ab_cost, th_ab_cost)[0] - base) / dval
-        print("grpart", awsd(exp, n_the_l, exp_ab_cost, th_ab_cost)[0])
+        grpart = (awsd(exp, n_the_l, exp_ab_cost, th_ab_cost) - base) / dval
+        print("grpart", awsd(exp, n_the_l, exp_ab_cost, th_ab_cost))
         res.append(grpart)
 
     return res
@@ -69,10 +70,10 @@ def deconvolve(EXP, THEs, exp_ab_cost, the_ab_cost):
         print(point, res)
         return res
     def grad(point):
-        return empiric_gradient(EXP, THEs, point, exp_ab_cost, the_ab_cost)
+        return checked_grad(EXP, THEs, point, exp_ab_cost, the_ab_cost)
     print("susp:", minimized_f([1.0, 0.8]))
 
-    print(scipy.optimize.minimize(minimized_f, [10.1] * len(THEs), jac=grad))
+    print(scipy.optimize.minimize(minimized_f, [15340.1] * len(THEs), jac=grad))
 
 if __name__ == '__main__':
     EXP = IsoSpecPy.IsoDistribution(masses=[1.0, 2.0], probs = [1.0, 1.0])
@@ -81,15 +82,15 @@ if __name__ == '__main__':
     THE2 = IsoSpecPy.IsoDistribution(masses=[1.0, 2.0], probs = [1.0, 0.0])
     THEs = [THE1, THE2]
 
-    print(awsd(EXP, THEs, 0.5, 0.5))
-    print(empiric_gradient(EXP, THEs, [1.0, 1.0], 0.5, 0.5))
-    sys.exit(0)
+    #print(awsd(EXP, THEs, 0.5, 0.5))
+    #print(empiric_gradient(EXP, THEs, [1.0, 1.0], 0.5, 0.5))
+    #sys.exit(0)
     deconvolve(EXP, THEs, 0.5, 0.5)
 
 #    EXP = random_spectrum()
 #    THEs = [random_spectrum() for _ in range(10)]
 
-    print(empiric_gradient(EXP, THEs, [0.1]*len(THEs), 0.5, 0.5))
+    print(checked_grad(EXP, THEs, [0.1]*len(THEs), 0.5, 0.5))
     lkklnjk
 
     i = 1

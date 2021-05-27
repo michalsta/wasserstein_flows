@@ -4,6 +4,7 @@ import math
 import sys
 import numpy as np
 from pprint import pprint
+from nx_print import nx_print
 
 from parameters import int_fact, integerize, flows_loud, emp_grad_dval
 
@@ -18,6 +19,7 @@ def awsd_g(exp, the_l, exp_ab_cost, th_ab_cost):
 
     for mass, prob in integerize(exp):
         G.add_edge('source', (mass, -1), capacity = prob, weight = 0)
+        assert prob >= 0.0
         G.add_edge((mass, -1), 'middle', weight = exp_ab_cost)
 #        if exp_sum > the_sum:
 #            G.add_edge((mass, -1), 'sink', weight = exp_ab_cost)
@@ -26,6 +28,7 @@ def awsd_g(exp, the_l, exp_ab_cost, th_ab_cost):
         for mass, prob in integerize(the_iso):
             G.add_edge((mass, idx), 'sink', capacity = prob, weight = 0)
             G.add_edge('middle', (mass, idx), weight = th_ab_cost)
+            assert prob >= 0.0
 #            if exp_sum <= the_sum:
 #                G.add_edge('source', (mass, idx), weight = th_ab_cost)
 
@@ -38,9 +41,10 @@ def awsd_g(exp, the_l, exp_ab_cost, th_ab_cost):
     G.add_edge('source', 'middle', capacity = the_sum, weight = 0)
     G.add_edge('middle', 'sink', capacity = exp_sum, weight = 0)
 
+    #nx_print(G)
     flow = networkx.max_flow_min_cost(G, 'source', 'sink')
 
-#    print(flow)
+    #pprint(flow)
 
     tot_cost = 0
     gradient_exp = 0
@@ -91,7 +95,3 @@ def awsd(exp, the_l, exp_ab_cost, th_ab_cost):
 
 if __name__ == '__main__':
     from test_spectra import *
-
-
-
-

@@ -5,6 +5,7 @@ from IsoSpecPy import IsoDistribution
 import flows
 import parameters
 import distances
+from flows_cl import AbWSDistCalc
 
 
 def flow_comp_grad(exp, thes, point, e_ab_c, t_ab_c):
@@ -43,23 +44,33 @@ def algo_emp_grad(exp, thes, point, e_ab_c, t_ab_c):
         return exp_i.abyssalWassersteinDistance(IsoDistribution.LinearCombination(thes_i, [1.0]*len(thes_i)), exp_ab_cost_i + th_ab_cost_i)
     return empiric_grad(awsd_fun, exp, thes, point, e_ab_c, t_ab_c)
 
+def cl_grad(exp, thes, point, e_ab_c, t_ab_c):
+    DC = AbWSDistCalc(exp, thes, e_ab_c, t_ab_c, lambda x, y: abs(x-y))
+    return DC.gradient_at(point)
+
 def checked_grad(exp, thes, point, e_ab_c, t_ab_c):
-    r_thes = []
-    for the, x in zip(thes, point):
-        c = the.copy()
-        c.scale(x)
-        r_thes.append(c)
+    #r_thes = []
+    #for the, x in zip(thes, point):
+    #    c = the.copy()
+    #    c.scale(x)
+    #    r_thes.append(c)
+    if not all(x >= 0.0 for x in point):
+        return cl_grad(exp, thes, point, e_ab_c, t_ab_c)
 
     graph_grad = flow_comp_grad(exp, thes, point, e_ab_c, t_ab_c)
     emp_grad = empiric_grad(distances.awsd_checked, exp, thes, point, e_ab_c, t_ab_c)
-    a_emp_grad = algo_emp_grad(exp, thes, point, e_ab_c, t_ab_c)
+    a_emp_grad = graph_grad #algo_emp_grad(exp, thes, point, e_ab_c, t_ab_c)
+    c_grad = cl_grad(exp, thes, point, e_ab_c, t_ab_c)
+
 
     def check(g):
-        return all(np.isclose(graph_grad, emp_grad, rtol=0.001, atol=0.000001))
-    if not (check(emp_grad) and check(a_emp_grad)):
+        return all(np.isclose(graph_grad, g, rtol=0.001, atol=0.000001))
+    if not all(map(check, [emp_grad, a_emp_grad, c_grad])):
         print(graph_grad)
         print(emp_grad)
-        #raise Exception()
+        print(a_emp_grad)
+        print(c_grad)
+        raise Exception()
     return emp_grad
 
 
