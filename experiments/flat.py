@@ -1,4 +1,5 @@
 from math import inf
+from tqdm import tqdm
 
 def samesign(x, y):
     if x<0 and y<0:
@@ -9,6 +10,7 @@ def samesign(x, y):
 
 
 epsilon = 1e-8
+debug = True
 
 class FlatGraph:
     def __init__(self, exp, the_l, exp_ab_cost, the_ab_cost):
@@ -18,7 +20,6 @@ class FlatGraph:
 
         L = [(mass, prob, -1) for mass, prob in zip(exp.masses, exp.probs)]
         for idx, the in enumerate(the_l):
-            print(L)
             L.extend((mass, prob, idx) for mass, prob in zip(the.masses, the.probs))
 
         L.sort()
@@ -59,6 +60,8 @@ class FlatGraph:
         return 0.0
 
     def self_verify(self):
+        if not debug:
+            return
         for i in range(len(self)):
             print(self.peak_summary(i))
             assert abs(self.inflow_from_left(i) + self.inflow_from_right(i) + self.from_abyss_flows[i] + self.directed_probs[i]) < epsilon
@@ -67,32 +70,56 @@ class FlatGraph:
             else:
                 assert self.from_abyss_flows[i] * self.directed_probs[i] <= 0.0
                 assert 0.0 <= abs(self.from_abyss_flows[i]) <= self.probs[i]
-                a,b = self.acceptable_modification_range(i)
-                print(a,b)
-                assert a <= 0.0 <= b
+                assert -epsilon <= self.yankable_flow(i) + self.stuffable_flow(i) - abs(self.directed_probs[i]) <= epsilon
+                assert self.stuffable_flow(i) >= 0.0
+                assert self.yankable_flow(i) >= 0.0
+                #a,b = self.acceptable_modification_range(i)
+                #assert a <= 0.0 <= b
+                #print(a, b, -self.yankable_flow(i))
+                #assert a == -self.yankable_flow(i)
                 
 
     def acceptable_modification_range(self, idx):
         return tuple(sorted((-self.from_abyss_flows[idx] - self.directed_probs[idx], -self.from_abyss_flows[idx])))
 
-    def can_modify_abyss_flow(self, idx, delta):
-        if delta == 0.0:
-            return True
-        x,y = self.acceptable_modification_range(idx)
-        return x <= delta <= y
+    def yankable_flow(self, idx):
+        if self.directed_probs[idx] > 0.0:
+            return -self.from_abyss_flows[idx]
+        return -self.directed_probs[idx] - self.from_abyss_flows[idx]
+
+    def stuffable_flow(self, idx):
+        if self.directed_probs[idx] > 0.0:
+            return self.directed_probs[idx] + self.from_abyss_flows[idx]
+        return self.from_abyss_flows[idx]
+
+    def can_modify_into_point_flow(self, idx, delta):
+        if delta >= 0.0:
+            return delta <= self.stuffable_flow(idx)
+        return -delta <= self.yankable_flow(idx)
+#        x,y = self.acceptable_modification_range(idx)
+#        return x - epsilon <= delta <= y + epsilon
 
     def can_send(self, src, tgt, howmuch):
-        return src == tgt or (self.can_modify_abyss_flow(src, howmuch) and self.can_modify_abyss_flow(tgt, -howmuch))
+        print("SRC:", src, self.can_modify_into_point_flow(src, -howmuch))
+        print("TGT:", tgt, self.can_modify_into_point_flow(tgt, howmuch))
+        print("ACCMRTGT:", self.acceptable_modification_range(src))
+        return src == tgt or (self.can_modify_into_point_flow(src, -howmuch) and self.can_modify_into_point_flow(tgt, howmuch))
 
     def send(self, src, tgt, howmuch):
         if src == tgt:
             return
         if tgt < src:
+            print("AAA")
             return self.send(tgt, src, -howmuch)
 
+        print("src:", self.peak_summary(src))
+        print("tgt:", self.peak_summary(tgt))
+        print("Amount:", howmuch)
         assert self.can_send(src, tgt, howmuch)
 
+        print(self.from_abyss_flows[src], howmuch)
         self.from_abyss_flows[src] += howmuch
+        print(self.from_abyss_flows[src])
         self.from_abyss_flows[tgt] -= howmuch
 
         for i in range(src, tgt):
@@ -109,17 +136,22 @@ class FlatGraph:
         return self.exp_ab_cost if self.idxes[idx] == -1 else self.the_ab_cost
 
     def stuffing_into_abyss_cost(self, idx):
+        print("SIA", self.peak_summary(idx))
         if self.from_abyss_flows[idx] > 0.0:
             return (-self.get_abyss_cost(idx), self.from_abyss_flows[idx])
+        print("CSDC", self.get_abyss_cost(idx), self.probs[idx] + self.from_abyss_flows[idx])
         return (self.get_abyss_cost(idx), self.probs[idx] + self.from_abyss_flows[idx])
 
     def yanking_out_of_abyss_cost(self, idx):
         if self.from_abyss_flows[idx] < 0.0:
+            print(self.from_abyss_flows[idx])
+            print(self.peak_summary(idx))
             return (-self.get_abyss_cost(idx), -self.from_abyss_flows[idx])
+        print("AAA")
         return (self.get_abyss_cost(idx), self.probs[idx] - self.from_abyss_flows[idx])
 
     def peak_summary(self, idx):
-        return f"{idx}: {self.idxes[idx]}\t{self.masses[idx]}\tdirprob: {self.directed_probs[idx]}\tfrom_ab_flow: {self.from_abyss_flows[idx]}"
+        return f"{idx}: spectrum no: {self.idxes[idx]}\tmass: {self.masses[idx]}\tdirprob: {self.directed_probs[idx]}\tfrom_ab_flow: {self.from_abyss_flows[idx]},\tstuffable: {self.stuffable_flow(idx)}\tyankable: {self.yankable_flow(idx)}"
 
     def delta_cost(self, src, tgt):
         '''The change in cost that will happen if we send flow from src to tgt, and how many units of flow can we send at that cost'''
@@ -128,24 +160,30 @@ class FlatGraph:
         if src == tgt:
             return (0.0, 0.0)
         cost, flow = self.yanking_out_of_abyss_cost(src)
+        print(flow)
         c, f = self.stuffing_into_abyss_cost(tgt)
+        print("st in ab cost:", c, f)
+        print(str(self))
+        print(f)
         cost += c
         flow = min(f, flow)
+        print("Flow:", flow)
+        #assert self.can_send(src, tgt, flow)
 
         if src < tgt:
             for i in range(src, tgt):
-                if self.inline_flows[i] >= 0:
+                if self.inline_flows[i] >= 0.0:
                     cost += self.costs[i]
                 else:
                     cost -= self.costs[i]
                     flow = min(flow, -self.inline_flows[i])
         else:
             for i in range(tgt, src):
-                if self.inline_flows[i] <= 0:
+                if self.inline_flows[i] <= 0.0:
                     cost += self.costs[i]
                 else:
                     cost -= self.costs[i]
-                    flow = min(flow, -self.inline_flows[i])
+                    flow = min(flow, self.inline_flows[i])
 
         return (cost, flow)
 
@@ -175,21 +213,27 @@ class FlatGraph:
         fl_left = 0.0
         left_idx = idx-1
         while left_idx >= 0:
-            dcost_left, fl_left = self.delta_cost(idx, left_idx)
-            if dcost_left < 0.0:
-                break
+            if self.stuffable_flow(left_idx) > 0.0:
+                dcost_left, fl_left = self.delta_cost(idx, left_idx)
+                print("XXX", dcost_left, fl_left)
+                if dcost_left < 0.0 and fl_left > 0.0:
+                    break
             left_idx -= 1
         dcost_right = 0.0
         fl_right = 0.0
         right_idx = idx+1
         while right_idx < len(self):
-            dcost_right, fl_right = self.delta_cost(idx, right_idx)
-            if dcost_right < 0.0:
-                break
+            print("RRR")
+            if self.stuffable_flow(right_idx) > 0.0:
+                dcost_right, fl_right = self.delta_cost(idx, right_idx)
+                if dcost_right < 0.0 and fl_right > 0.0:
+                    break
             right_idx += 1
+        print("Dcosts:", dcost_left, dcost_right)
         if dcost_left >= 0.0 and dcost_right >= 0.0:
             return False
         if dcost_left < dcost_right:
+            print(dcost_left, dcost_right, left_idx, idx, fl_left)
             self.send(idx, left_idx, fl_left)
         else:
             self.send(idx, right_idx, fl_right)
@@ -197,7 +241,7 @@ class FlatGraph:
 
 
     def pushout_optimize(self):
-        for i in range(len(self)):
+        for i in tqdm(range(len(self))):
             while self.pushout_once(i):
                 pass
 
@@ -210,13 +254,16 @@ if __name__ == "__main__":
         rerandomize(i)
         LEXP, LTHEs = rerandomize()
         FG = FlatGraph(LEXP, LTHEs, 1.0, 1.0)
-        print(str(FG))
+        #print(str(FG))
         print(FG.peak_summary(0))
         print(FG.peak_summary(1))
         print(FG.delta_cost(1, 0))
     #    print("Cost:", FG.total_cost(), FG.is_optimal())
     #    FG.send(1, 0, 1.0)
         print("Cost:", FG.total_cost(), FG.is_optimal())
+        FG.pushout_optimize()
+        FG.pushout_optimize()
+        FG.pushout_optimize()
         FG.pushout_optimize()
     #    FG.naive_optimize_once()
         print("Cost:", FG.total_cost(), FG.is_optimal())
