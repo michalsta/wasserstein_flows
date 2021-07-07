@@ -54,6 +54,6 @@ def rerandomize(seed = None):
     LEXP = random_spectrum(std_dim)
     p(LEXP)
     LTHEs = [random_spectrum(std_dim) for x in range(no_thes)]
-    print("THEs:")
-    for x in LTHEs: p(x)
+    #print("THEs:")
+    #for x in LTHEs: p(x)
     return LEXP, LTHEs
