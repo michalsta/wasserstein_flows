@@ -13,6 +13,10 @@ def samesign(x, y):
 epsilon = 1e-8
 debug = True
 
+import cppyy
+
+cppyy.include('cmirror.cpp')
+
 class FlatGraph:
     def __init__(self, exp, the_l, exp_ab_cost, the_ab_cost):
 
@@ -26,17 +30,29 @@ class FlatGraph:
         L.sort()
 
         self.masses, self.probs, self.idxes = zip(*L)
-        self.masses = np.array(self.masses)
-        self.probs = np.array(self.probs)
-        self.idxes = np.array(self.idxes, dtype=np.int32)
+        '''
+        self.masses = cppyy.gbl.std.vector[float](self.masses)
+        self.probs = cppyy.gbl.std.vector[float](self.probs)
+        self.idxes = cppyy.gbl.std.vector[int](self.idxes)
         
         nconfs = len(self.masses)
 
-        self.inline_flows = np.zeros(nconfs-1, dtype=float) #[0.0] * (nconfs-1) # Positive is to right, neg. to left
-        self.costs = np.array([self.masses[i+1] - self.masses[i] for i in range(nconfs-1)])
+        self.inline_flows = cppyy.gbl.std.vector[float](nconfs-1) #[0.0] * (nconfs-1) # Positive is to right, neg. to left
+        self.costs = cppyy.gbl.std.vector[float]([self.masses[i+1] - self.masses[i] for i in range(nconfs-1)])
 
-        self.directed_probs = np.array([prob if idx >= 0 else -prob for _, prob, idx in L])
-        self.from_abyss_flows = np.array([-x for x in self.directed_probs])
+        self.directed_probs = cppyy.gbl.std.vector([prob if idx >= 0 else -prob for _, prob, idx in L])
+        self.from_abyss_flows = cppyy.gbl.std.vector([-x for x in self.directed_probs])
+'''
+#        self.cmirror = cppyy.gbl.CMirror(cppyy.gbl.std.move(self.masses), cppyy.gbl.std.move(self.probs), cppyy.gbl.std.move(self.idxes))
+        self.cmirror = cppyy.gbl.CMirror(self.masses, self.probs, self.idxes, exp_ab_cost, the_ab_cost)
+
+        self.masses = self.cmirror.masses
+        self.probs = self.cmirror.probs
+        self.idxes = self.cmirror.idxes
+        self.inline_flows = self.cmirror.inline_flows
+        self.costs = self.cmirror.costs
+        self.directed_probs = self.cmirror.directed_probs
+        self.from_abyss_flows = self.cmirror.from_abyss_flows
 
 #        for i in range(nconfs):
 #            print("AAA", self.acceptable_modification_range(i))
@@ -87,14 +103,20 @@ class FlatGraph:
         return tuple(sorted((-self.from_abyss_flows[idx] - self.directed_probs[idx], -self.from_abyss_flows[idx])))
 
     def yankable_flow(self, idx):
+        return self.cmirror.yankable_flow(idx)
+        '''
         if self.directed_probs[idx] > 0.0:
             return -self.from_abyss_flows[idx]
         return -self.directed_probs[idx] - self.from_abyss_flows[idx]
+        '''
 
     def stuffable_flow(self, idx):
+        return self.cmirror.stuffable_flow(idx)
+        '''
         if self.directed_probs[idx] > 0.0:
             return self.directed_probs[idx] + self.from_abyss_flows[idx]
         return self.from_abyss_flows[idx]
+        '''
 
     def can_modify_into_point_flow(self, idx, delta):
         if delta >= 0.0:
@@ -136,19 +158,28 @@ class FlatGraph:
         return cost
 
     def get_abyss_cost(self, idx):
+        return self.cmirror.get_abyss_cost(idx)
+        '''
         return self.exp_ab_cost if self.idxes[idx] == -1 else self.the_ab_cost
+        '''
 
     def stuffing_into_abyss_cost(self, idx):
+        return self.cmirror.stuffing_into_abyss_cost(idx)
+        '''
         #print("SIA", self.peak_summary(idx))
         if self.from_abyss_flows[idx] > 0.0:
             return (-self.get_abyss_cost(idx), self.from_abyss_flows[idx])
         #print("CSDC", self.get_abyss_cost(idx), self.probs[idx] + self.from_abyss_flows[idx])
         return (self.get_abyss_cost(idx), self.probs[idx] + self.from_abyss_flows[idx])
+        '''
 
     def yanking_out_of_abyss_cost(self, idx):
+        return self.cmirror.yanking_out_of_abyss_cost(idx)
+        '''
         if self.from_abyss_flows[idx] < 0.0:
             return (-self.get_abyss_cost(idx), -self.from_abyss_flows[idx])
         return (self.get_abyss_cost(idx), self.probs[idx] - self.from_abyss_flows[idx])
+        '''
 
     def peak_summary(self, idx):
         return f"{idx}: spectrum no: {self.idxes[idx]}\tmass: {self.masses[idx]}\tdirprob: {self.directed_probs[idx]}\tfrom_ab_flow: {self.from_abyss_flows[idx]},\tstuffable: {self.stuffable_flow(idx)}\tyankable: {self.yankable_flow(idx)}"
@@ -157,6 +188,8 @@ class FlatGraph:
         '''The change in cost that will happen if we send flow from src to tgt, and how many units of flow can we send at that cost'''
         assert 0 <= src < len(self)
         assert 0 <= tgt < len(self)
+        return self.cmirror.delta_cost(src, tgt)
+        '''
         if src == tgt:
             return (0.0, 0.0)
         cost, flow = self.yanking_out_of_abyss_cost(src)
@@ -182,6 +215,7 @@ class FlatGraph:
                     flow = min(flow, self.inline_flows[i])
 
         return (cost, flow)
+        '''
 
     def is_optimal(self):
         for src in range(len(self)):
