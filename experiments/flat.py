@@ -1,5 +1,6 @@
 from math import inf
 from tqdm import tqdm
+import numpy as np
 
 def samesign(x, y):
     if x<0 and y<0:
@@ -28,16 +29,16 @@ class FlatGraph:
         
         nconfs = len(self.masses)
 
-        self.inline_flows = [0.0] * (nconfs-1) # Positive is to right, neg. to left
-        self.costs = [self.masses[i+1] - self.masses[i] for i in range(nconfs-1)]
+        self.inline_flows = np.zeros(nconfs-1, dtype=float) #[0.0] * (nconfs-1) # Positive is to right, neg. to left
+        self.costs = np.array([self.masses[i+1] - self.masses[i] for i in range(nconfs-1)])
 
-        self.directed_probs = [prob if idx >= 0 else -prob for _, prob, idx in L]
-        self.from_abyss_flows = [-x for x in self.directed_probs]
+        self.directed_probs = np.array([prob if idx >= 0 else -prob for _, prob, idx in L])
+        self.from_abyss_flows = np.array([-x for x in self.directed_probs])
 
 #        for i in range(nconfs):
 #            print("AAA", self.acceptable_modification_range(i))
 
-        self.self_verify()
+        #self.self_verify()
 
     def __str__(self):
         ret = []
