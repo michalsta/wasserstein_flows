@@ -26,6 +26,9 @@ class FlatGraph:
         L.sort()
 
         self.masses, self.probs, self.idxes = zip(*L)
+        self.masses = np.array(self.masses)
+        self.probs = np.array(self.probs)
+        self.idxes = np.array(self.idxes, dtype=np.int32)
         
         nconfs = len(self.masses)
 
