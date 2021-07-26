@@ -287,6 +287,7 @@ if __name__ == "__main__":
     from test_spectra import *
     from flows_cl import AbWSDistCalc
     import time
+    import sys
     i = 0
     while True:
         i += 1
