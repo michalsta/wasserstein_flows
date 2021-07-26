@@ -248,12 +248,12 @@ class FlatGraph:
 if __name__ == "__main__":
     from test_spectra import *
     from flows_cl import AbWSDistCalc
+    import time
     i = 0
     while True:
         i += 1
         rerandomize(i)
         LEXP, LTHEs = rerandomize()
-        FG = FlatGraph(LEXP, LTHEs, 1.0, 1.0)
         print()
         print()
         #print(str(FG))
@@ -262,12 +262,22 @@ if __name__ == "__main__":
         #print(FG.delta_cost(1, 0))
     #    print("Cost:", FG.total_cost(), FG.is_optimal())
     #   FG.send(1, 0, 1.0)
+        AW_time = time.time()
         AWDC = AbWSDistCalc(LEXP, LTHEs, 1.0, 1.0, lambda x,y: abs(x-y))
+        constr_time = time.time() - AW_time
+        print("Flow graph construction time:", constr_time)
+        AW_time = time.time()
         rwsd = AWDC.value_at([1.0]*len(LTHEs))
-        print("Real AWSD:", rwsd)
+        AW_time = time.time() - AW_time
+        print("Real AWSD:", rwsd, "elapsed time:", AW_time)
+
+        FG_time = time.time()
+        FG = FlatGraph(LEXP, LTHEs, 1.0, 1.0)
         while not FG.is_optimal():
             print("Cost:", FG.total_cost(), FG.is_optimal())
             FG.pushout_optimize()
+        FG_time = time.time() - FG_time
+        print("FG time:", FG_time)
         assert FG.total_cost() == rwsd
         FG.pushout_optimize()
         FG.pushout_optimize()
