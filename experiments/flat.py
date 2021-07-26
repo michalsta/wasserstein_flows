@@ -1,6 +1,5 @@
 from math import inf
 from tqdm import tqdm
-from flows_cl import AbWSDistCalc
 
 def samesign(x, y):
     if x<0 and y<0:
@@ -184,7 +183,7 @@ class FlatGraph:
         for src in range(len(self)):
             if self.yankable_flow(src) > 0.0:
                 for tgt in range(len(self)):
-                    if self.delta_cost(src, tgt)[0] < 0.0 and self.stuffable_flow(tgt) > 0.0:
+                    if self.stuffable_flow(tgt) > 0.0 and self.delta_cost(src, tgt)[0] < 0.0:
                         print(self.peak_summary(src))
                         print(self.peak_summary(tgt))
                         print("not optimal:", self.delta_cost(src, tgt)[0])
@@ -240,9 +239,15 @@ class FlatGraph:
             while self.pushout_once(i):
                 pass
 
+    def optimize(self):
+        while not self.is_optimal():
+            print("DSCA")
+            self.pushout_optimize()
+
 
 if __name__ == "__main__":
     from test_spectra import *
+    from flows_cl import AbWSDistCalc
     i = 0
     while True:
         i += 1
