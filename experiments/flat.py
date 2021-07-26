@@ -65,7 +65,7 @@ class FlatGraph:
         for i in range(len(self)):
             #print(self.peak_summary(i))
             assert abs(self.inflow_from_left(i) + self.inflow_from_right(i) + self.from_abyss_flows[i] + self.directed_probs[i]) < epsilon
-            if self.directed_probs == 0.0:
+            if self.directed_probs[i] == 0.0:
                 assert self.from_abyss_flows[i] == 0.0
             else:
                 assert self.from_abyss_flows[i] * self.directed_probs[i] <= 0.0
