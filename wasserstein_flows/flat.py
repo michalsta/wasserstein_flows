@@ -1,3 +1,4 @@
+import pathlib
 from math import inf
 from tqdm import tqdm
 import numpy as np
@@ -15,13 +16,15 @@ debug = True
 
 import cppyy
 
-cppyy.include('cmirror.cpp')
+here = pathlib.Path(__file__).parent.resolve()
+cppyy.include(here/'cmirror.cpp')
 
 class FlatGraph:
     def __init__(self, exp, the_l, exp_ab_cost, the_ab_cost):
 
         self.exp_ab_cost = exp_ab_cost
         self.the_ab_cost = the_ab_cost
+        self.tot_ab_cost = exp_ab_cost + the_ab_cost
 
         L = [(mass, prob, -1) for mass, prob in zip(exp.masses, exp.probs)]
         for idx, the in enumerate(the_l):
@@ -249,7 +252,7 @@ class FlatGraph:
         while left_idx >= 0:
             if self.stuffable_flow(left_idx) > 0.0:
                 dcost_left, fl_left = self.delta_cost(idx, left_idx)
-                if dcost_left < 0.0 and fl_left > 0.0:
+                if (dcost_left < 0.0 and fl_left > 0.0) or dcost_left > self.tot_ab_cost:
                     break
             left_idx -= 1
         dcost_right = 0.0
@@ -258,7 +261,7 @@ class FlatGraph:
         while right_idx < len(self):
             if self.stuffable_flow(right_idx) > 0.0:
                 dcost_right, fl_right = self.delta_cost(idx, right_idx)
-                if dcost_right < 0.0 and fl_right > 0.0:
+                if (dcost_right < 0.0 and fl_right > 0.0) or dcost_right > self.tot_ab_cost:
                     break
             right_idx += 1
 #        print("Dcosts:", dcost_left, dcost_right)
@@ -312,12 +315,15 @@ if __name__ == "__main__":
 
         FG_time = time.time()
         FG = FlatGraph(LEXP, LTHEs, 1.0, 1.0)
-        while not FG.is_optimal():
-            print("Cost:", FG.total_cost(), FG.is_optimal())
-            FG.pushout_optimize()
+        FG.optimize()
+#        while not FG.is_optimal():
+#            print("Cost:", FG.total_cost(), FG.is_optimal())
+#            FG.pushout_optimize()
         FG_time = time.time() - FG_time
         print("FG time:", FG_time)
+        print("FG cost:", FG.total_cost())
         assert FG.total_cost() == rwsd
+        sys.exit(0)
         FG.pushout_optimize()
         FG.pushout_optimize()
         FG.pushout_optimize()
