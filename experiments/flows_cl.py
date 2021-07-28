@@ -20,7 +20,7 @@ def deiso(spectrum):
     return spectrum
 
 class AbWSDistCalc:
-    def __init__(self, experimental, theoreticals, exp_ab_cost, the_ab_cost, distance_fun):
+    def __init__(self, experimental, theoreticals, exp_ab_cost, the_ab_cost, distance_fun = None):
         self.G = networkx.DiGraph()
 
         self.experimental = integerize_spectrum(deiso(experimental))
@@ -43,12 +43,21 @@ class AbWSDistCalc:
                 self.G.add_edge('middle', (label, idx), weight = self.the_ab_cost)
 
 
-        for elabel, _ in self.experimental:
+        if distance_fun is None:
+            peaks = [(label, prob, -1) for label, prob in self.experimental]
             for idx, the_s in enumerate(self.theoreticals):
-                for tlabel, _ in the_s:
-                    dist = integerize_single(distance_fun(elabel, tlabel))
-                    if dist < self.tot_ab_cost:
-                        self.G.add_edge((elabel, -1), (tlabel, idx), weight = integerize_single(distance_fun(elabel, tlabel)))
+                peaks.extend((label, prob, idx) for label, prob in the_s)
+            peaks.sort()
+            for idx in range(len(peaks)-1):
+                self.G.add_edge((peaks[idx][0], peaks[idx][2]), (peaks[idx+1][0], peaks[idx+1][2]), weight = integerize_single(peaks[idx+1][0]-peaks[idx][0]))
+
+        else:
+            for elabel, _ in self.experimental:
+                for idx, the_s in enumerate(self.theoreticals):
+                    for tlabel, _ in the_s:
+                        dist = integerize_single(distance_fun(elabel, tlabel))
+                        if dist < self.tot_ab_cost:
+                            self.G.add_edge((elabel, -1), (tlabel, idx), weight = integerize_single(distance_fun(elabel, tlabel)))
 
         self.G.add_edge('source', 'middle', capacity = 0, weight = 0)
         self.G.add_edge('middle', 'sink', capacity = exp_sum, weight = 0)
