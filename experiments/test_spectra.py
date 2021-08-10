@@ -15,7 +15,7 @@ EXPa = IsoSpecPy.IsoDistribution(masses=[1.0, 5.0], probs=[9.0, 9.0])
 THEsa = IsoSpecPy.IsoDistribution(masses=[4.0, 0.0], probs=[5.0, 4.0])
 THEsa.sort_by_mass()
 
-std_dim = 20
+std_dim = 250
 no_thes = 3
 
 def get_probs(N = std_dim):

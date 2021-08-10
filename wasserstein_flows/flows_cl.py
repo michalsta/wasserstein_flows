@@ -4,8 +4,7 @@ import networkx
 import numpy as np
 from pprint import pprint
 from IsoSpecPy import IsoDistribution
-from parameters import integerize, integerize_single, int_fact
-from nx_print import nx_print
+from wasserstein_flows.parameters import integerize, integerize_single, int_fact
 
 negative_penalty = 10000.0
 negative_const_penalty = 1e10
