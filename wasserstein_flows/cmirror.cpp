@@ -19,6 +19,7 @@ public:
 
     const double exp_ab_cost;
     const double the_ab_cost;
+    const double tot_ab_cost;
 
     class Graph{
     public:
@@ -26,6 +27,8 @@ public:
         std::vector<double> costs;
         std::vector<double> directed_probs;
         std::vector<double> from_abyss_flows;
+
+        void send(size_t src, size_t dst, double howmuch);
     } G;
 
     double yankable_flow(size_t idx) const;
@@ -38,6 +41,8 @@ public:
 
 
     std::pair<double, double> delta_cost(size_t src, size_t tgt);
+
+    inline bool pushout_once(size_t idx);
 };
 
 
@@ -47,7 +52,8 @@ CMirror::CMirror(const std::vector<double>&& _masses, const std::vector<double>&
     idxes(std::move(_idxes)),
     nconfs(idxes.size()),
     exp_ab_cost(_exp_ab_cost),
-    the_ab_cost(_the_ab_cost)
+    the_ab_cost(_the_ab_cost),
+    tot_ab_cost(_exp_ab_cost + _the_ab_cost)
 {
     G.inline_flows.resize(nconfs-1);
 
@@ -138,3 +144,60 @@ std::pair<double, double> CMirror::delta_cost(size_t src, size_t tgt)
     return {cost, flow};
 }
 
+inline void CMirror::Graph::send(size_t src, size_t tgt, double howmuch)
+{
+    if(src == tgt)
+        return;
+    if(tgt < src)
+    {
+        std::swap(src, tgt);
+        howmuch = -howmuch;
+    }
+
+    from_abyss_flows[src] += howmuch;
+    from_abyss_flows[tgt] -= howmuch;
+
+    for(size_t ii = src; ii < tgt; ii++)
+        inline_flows[ii] += howmuch;
+}
+
+inline bool CMirror::pushout_once(size_t idx)
+{
+        if(yankable_flow(idx) == 0.0)
+            return false;
+        double dcost_left = 0.0;
+        double fl_left = 0.0;
+        ssize_t left_idx = idx-1;
+        while(left_idx >= 0)
+        {
+            if(stuffable_flow(left_idx) > 0.0)
+            {
+                std::tie(dcost_left, fl_left) = delta_cost(idx, left_idx);
+                if((dcost_left < 0.0 and fl_left > 0.0) or dcost_left > tot_ab_cost)
+                    break;
+            }
+            left_idx -= 1;
+        }
+        double dcost_right = 0.0;
+        double fl_right = 0.0;
+        size_t right_idx = idx+1;
+        while(right_idx < nconfs)
+        {
+            if(stuffable_flow(right_idx) > 0.0)
+            {
+                std::tie(dcost_right, fl_right) = delta_cost(idx, right_idx);
+                if((dcost_right < 0.0 and fl_right > 0.0) or dcost_right > tot_ab_cost)
+                    break;
+            }
+            right_idx += 1;
+        }
+
+        if(dcost_left >= 0.0 and dcost_right >= 0.0)
+            return false;
+
+        if(dcost_left < dcost_right)
+            G.send(idx, left_idx, fl_left);
+        else
+            G.send(idx, right_idx, fl_right);
+        return true;
+}

@@ -33,7 +33,7 @@ class FlatGraph:
 
         L.sort()
 
-        self.masses, self.probs, self.idxes = zip(*L)
+        masses, probs, idxes = zip(*L)
         '''
         self.masses = cppyy.gbl.std.vector[float](self.masses)
         self.probs = cppyy.gbl.std.vector[float](self.probs)
@@ -48,7 +48,7 @@ class FlatGraph:
         self.from_abyss_flows = cppyy.gbl.std.vector([-x for x in self.directed_probs])
 '''
 #        self.cmirror = cppyy.gbl.CMirror(cppyy.gbl.std.move(self.masses), cppyy.gbl.std.move(self.probs), cppyy.gbl.std.move(self.idxes))
-        self.cmirror = cppyy.gbl.CMirror(self.masses, self.probs, self.idxes, exp_ab_cost, the_ab_cost)
+        self.cmirror = cppyy.gbl.CMirror(masses, probs, idxes, exp_ab_cost, the_ab_cost)
 
         self.masses = self.cmirror.masses
         self.probs = self.cmirror.probs
@@ -87,7 +87,7 @@ class FlatGraph:
         if not debug:
             return
         for i in range(len(self)):
-            #print(self.peak_summary(i))
+            print(self.peak_summary(i))
             assert abs(self.inflow_from_left(i) + self.inflow_from_right(i) + self.from_abyss_flows[i] + self.directed_probs[i]) < epsilon
             if self.directed_probs[i] == 0.0:
                 assert self.from_abyss_flows[i] == 0.0
@@ -136,6 +136,8 @@ class FlatGraph:
         return src == tgt or (self.can_modify_into_point_flow(src, -howmuch) and self.can_modify_into_point_flow(tgt, howmuch))
 
     def send(self, src, tgt, howmuch):
+        self.cmirror.G.send(src, tgt, howmuch)
+        '''
         if src == tgt:
             return
         if tgt < src:
@@ -144,7 +146,8 @@ class FlatGraph:
         #print("src:", self.peak_summary(src))
         #print("tgt:", self.peak_summary(tgt))
         #print("Amount:", howmuch)
-        assert self.can_send(src, tgt, howmuch)
+        if debug:
+            assert self.can_send(src, tgt, howmuch)
 
         #print(self.from_abyss_flows[src], howmuch)
         self.from_abyss_flows[src] += howmuch
@@ -153,8 +156,9 @@ class FlatGraph:
 
         for i in range(src, tgt):
             self.inline_flows[i] += howmuch
-
-        self.self_verify()
+'''
+        if debug:
+            self.self_verify()
 
     def total_cost(self):
         cost = sum(c * abs(f) for c, f in zip(self.costs, self.inline_flows))
@@ -247,6 +251,8 @@ class FlatGraph:
                         break
 
     def pushout_once(self, idx):
+        return self.cmirror.pushout_once(idx)
+        '''
         if self.yankable_flow(idx) == 0.0:
             return False
         dcost_left = 0.0
@@ -276,7 +282,7 @@ class FlatGraph:
         else:
             self.send(idx, right_idx, fl_right)
         return True
-
+        '''
 
     def pushout_optimize(self):
         pushed_out = False
