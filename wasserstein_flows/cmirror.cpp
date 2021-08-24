@@ -118,6 +118,9 @@ std::pair<double, double> CMirror::delta_cost(size_t src, size_t tgt)
     cost += c;
     flow = (std::min)(f, flow);
 
+    if(flow == 0.0)
+        return {0.0, 0.0};
+
     if(src < tgt)
     {
         for(size_t ii = src; ii < tgt; ii++)
@@ -160,6 +163,30 @@ inline void CMirror::Graph::send(size_t src, size_t tgt, double howmuch)
     for(size_t ii = src; ii < tgt; ii++)
         inline_flows[ii] += howmuch;
 }
+
+/*
+std::tuple<size_t, double, double> CMirror::closest_left_improving(size_t src)
+{
+    auto [cost, flow] = yanking_out_of_abyss_cost(src);
+    if(flow == 0.0)
+        return {0, 0.0, 0.0};
+
+    for(size_t ii = src-1; ii != std::numeric_limits<decltype(ii)>::max(); ii--)
+    {
+        if(G.inline_flows[ii] <= 0.0)
+            cost += G.costs[ii];
+        else
+        {
+            cost -= G.costs[ii];
+            flow = (std::min)(flow, -G.inline_flows[ii]);
+        }
+        auto [c, f] = stuffing_into_abyss_cost(ii);
+        if(f > 0.0 and cost + c < 0.0)
+            return {ii, cost+c, (std::min)(flow, f)};
+    }
+    return {0, 0.0, 0.0};
+}*/
+
 
 inline bool CMirror::pushout_once(size_t idx)
 {
