@@ -322,9 +322,8 @@ if __name__ == "__main__":
         FG_time = time.time()
         FG = FlatGraph(LEXP, LTHEs, 1.0, 1.0)
         FG.optimize()
-        while not FG.is_optimal():
-            print("Cost:", FG.total_cost(), FG.is_optimal())
-            FG.pushout_optimize()
+        if debug:
+            assert FG.is_optimal()
         FG_time = time.time() - FG_time
         print("FG time:", FG_time)
         print("FG cost:", FG.total_cost())
