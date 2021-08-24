@@ -12,7 +12,8 @@ def samesign(x, y):
 
 
 epsilon = 1e-8
-debug = True
+debug = False
+#debug = True
 
 import cppyy
 
@@ -52,10 +53,10 @@ class FlatGraph:
         self.masses = self.cmirror.masses
         self.probs = self.cmirror.probs
         self.idxes = self.cmirror.idxes
-        self.inline_flows = self.cmirror.inline_flows
-        self.costs = self.cmirror.costs
-        self.directed_probs = self.cmirror.directed_probs
-        self.from_abyss_flows = self.cmirror.from_abyss_flows
+        self.inline_flows = self.cmirror.G.inline_flows
+        self.costs = self.cmirror.G.costs
+        self.directed_probs = self.cmirror.G.directed_probs
+        self.from_abyss_flows = self.cmirror.G.from_abyss_flows
 
 #        for i in range(nconfs):
 #            print("AAA", self.acceptable_modification_range(i))
@@ -189,8 +190,9 @@ class FlatGraph:
 
     def delta_cost(self, src, tgt):
         '''The change in cost that will happen if we send flow from src to tgt, and how many units of flow can we send at that cost'''
-        assert 0 <= src < len(self)
-        assert 0 <= tgt < len(self)
+        if debug:
+            assert 0 <= src < len(self)
+            assert 0 <= tgt < len(self)
         return self.cmirror.delta_cost(src, tgt)
         '''
         if src == tgt:
@@ -225,9 +227,10 @@ class FlatGraph:
             if self.yankable_flow(src) > 0.0:
                 for tgt in range(len(self)):
                     if self.stuffable_flow(tgt) > 0.0 and self.delta_cost(src, tgt)[0] < 0.0:
-                        print(self.peak_summary(src))
-                        print(self.peak_summary(tgt))
-                        print("not optimal:", self.delta_cost(src, tgt)[0])
+                        if debug:
+                            print(self.peak_summary(src))
+                            print(self.peak_summary(tgt))
+                            print("not optimal:", self.delta_cost(src, tgt)[0])
                         return False
         return True
 
@@ -276,14 +279,17 @@ class FlatGraph:
 
 
     def pushout_optimize(self):
+        pushed_out = False
         for i in range(len(self)):
             while self.pushout_once(i):
+                pushed_out = True
                 pass
+        return pushed_out
 
     def optimize(self):
-        while not self.is_optimal():
+        while self.pushout_optimize(): #not self.is_optimal():
             print("DSCA")
-            self.pushout_optimize()
+#            self.pushout_optimize()
 
 
 if __name__ == "__main__":
@@ -316,14 +322,16 @@ if __name__ == "__main__":
         FG_time = time.time()
         FG = FlatGraph(LEXP, LTHEs, 1.0, 1.0)
         FG.optimize()
-#        while not FG.is_optimal():
-#            print("Cost:", FG.total_cost(), FG.is_optimal())
-#            FG.pushout_optimize()
+        while not FG.is_optimal():
+            print("Cost:", FG.total_cost(), FG.is_optimal())
+            FG.pushout_optimize()
         FG_time = time.time() - FG_time
         print("FG time:", FG_time)
         print("FG cost:", FG.total_cost())
-        assert FG.total_cost() == rwsd
-        sys.exit(0)
+        print(FG.total_cost(), round(rwsd))
+        assert FG.total_cost() == round(rwsd)
+        if not debug:
+            sys.exit(0)
         FG.pushout_optimize()
         FG.pushout_optimize()
         FG.pushout_optimize()
