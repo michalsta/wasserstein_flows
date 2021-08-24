@@ -310,14 +310,15 @@ if __name__ == "__main__":
         #print(FG.delta_cost(1, 0))
     #    print("Cost:", FG.total_cost(), FG.is_optimal())
     #   FG.send(1, 0, 1.0)
-        AW_time = time.time()
-        AWDC = AbWSDistCalc(LEXP, LTHEs, 1.0, 1.0, lambda x,y: abs(x-y))
-        constr_time = time.time() - AW_time
-        print("Flow graph construction time:", constr_time)
-        AW_time = time.time()
-        rwsd = AWDC.value_at([1.0]*len(LTHEs))
-        AW_time = time.time() - AW_time
-        print("Real AWSD:", rwsd, "elapsed time:", AW_time)
+        if debug:
+            AW_time = time.time()
+            AWDC = AbWSDistCalc(LEXP, LTHEs, 1.0, 1.0, lambda x,y: abs(x-y))
+            constr_time = time.time() - AW_time
+            print("Flow graph construction time:", constr_time)
+            AW_time = time.time()
+            rwsd = AWDC.value_at([1.0]*len(LTHEs))
+            AW_time = time.time() - AW_time
+            print("Real AWSD:", rwsd, "elapsed time:", AW_time)
 
         FG_time = time.time()
         FG = FlatGraph(LEXP, LTHEs, 1.0, 1.0)
@@ -327,8 +328,9 @@ if __name__ == "__main__":
         FG_time = time.time() - FG_time
         print("FG time:", FG_time)
         print("FG cost:", FG.total_cost())
-        print(FG.total_cost(), round(rwsd))
-        assert FG.total_cost() == round(rwsd)
+        if debug:
+            print(FG.total_cost(), round(rwsd))
+            assert FG.total_cost() == round(rwsd)
         if not debug:
             sys.exit(0)
         FG.pushout_optimize()
