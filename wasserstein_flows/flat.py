@@ -13,7 +13,7 @@ def samesign(x, y):
 
 epsilon = 1e-8
 debug = False
-#debug = True
+debug = True
 
 import cppyy
 

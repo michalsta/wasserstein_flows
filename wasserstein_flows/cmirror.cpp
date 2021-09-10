@@ -41,6 +41,7 @@ public:
 
 
     std::pair<double, double> delta_cost(size_t src, size_t tgt);
+    std::tuple<size_t, double, double> closest_left_improving(size_t src);
 
     inline bool pushout_once(size_t idx);
 };
@@ -164,12 +165,12 @@ inline void CMirror::Graph::send(size_t src, size_t tgt, double howmuch)
         inline_flows[ii] += howmuch;
 }
 
-/*
+
 std::tuple<size_t, double, double> CMirror::closest_left_improving(size_t src)
 {
     auto [cost, flow] = yanking_out_of_abyss_cost(src);
     if(flow == 0.0)
-        return {0, 0.0, 0.0};
+        return {0, 1.0, 0.0};
 
     for(size_t ii = src-1; ii != std::numeric_limits<decltype(ii)>::max(); ii--)
     {
@@ -178,33 +179,48 @@ std::tuple<size_t, double, double> CMirror::closest_left_improving(size_t src)
         else
         {
             cost -= G.costs[ii];
-            flow = (std::min)(flow, -G.inline_flows[ii]);
+            flow = (std::min)(flow, G.inline_flows[ii]);
         }
         auto [c, f] = stuffing_into_abyss_cost(ii);
+
         if(f > 0.0 and cost + c < 0.0)
+        {
             return {ii, cost+c, (std::min)(flow, f)};
+        }
     }
-    return {0, 0.0, 0.0};
-}*/
+    return {0, 1.0, 0.0};
+}
 
 
 inline bool CMirror::pushout_once(size_t idx)
 {
         if(yankable_flow(idx) == 0.0)
             return false;
-        double dcost_left = 0.0;
-        double fl_left = 0.0;
-        ssize_t left_idx = idx-1;
-        while(left_idx >= 0)
+
+        
+        double mdcost_left = 0.0;
+        double mfl_left = 0.0;
+        ssize_t mleft_idx = idx-1;
+        while(mleft_idx >= 0)
         {
-            if(stuffable_flow(left_idx) > 0.0)
+            if(stuffable_flow(mleft_idx) > 0.0)
             {
-                std::tie(dcost_left, fl_left) = delta_cost(idx, left_idx);
-                if((dcost_left < 0.0 and fl_left > 0.0) or dcost_left > tot_ab_cost)
+                std::tie(mdcost_left, mfl_left) = delta_cost(idx, mleft_idx);
+                if((mdcost_left < 0.0 and mfl_left > 0.0) or mdcost_left > tot_ab_cost)
                     break;
             }
-            left_idx -= 1;
+            mleft_idx -= 1;
         }
+
+        auto[left_idx, dcost_left, fl_left] = closest_left_improving(idx);
+        if(dcost_left < 0.0 or mdcost_left < 0.0)
+        {
+            std::cout << idx << std::endl;
+            std::cout << "BBB " << mleft_idx << " " << left_idx << " " << mdcost_left << " " << dcost_left << std::endl;
+            if(dcost_left != mdcost_left or left_idx != mleft_idx or fl_left != mfl_left)
+                throw 3;
+        }
+
         double dcost_right = 0.0;
         double fl_right = 0.0;
         size_t right_idx = idx+1;
