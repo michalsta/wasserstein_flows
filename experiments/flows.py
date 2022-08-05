@@ -6,7 +6,7 @@ import numpy as np
 from pprint import pprint
 from nx_print import nx_print
 
-from parameters import int_fact, integerize, flows_loud, emp_grad_dval
+from wasserstein_flows.parameters import int_fact, integerize, flows_loud, emp_grad_dval
 
 
 def awsd_g(exp, the_l, exp_ab_cost, th_ab_cost):
