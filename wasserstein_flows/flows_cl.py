@@ -147,8 +147,53 @@ class AbWSDistCalc:
         self.set_point(point)
         return self.gradient()
 
-if __name__ == '__main__':
 
+class MatrixDistance:
+    def __init__(self, dist_matrix):
+
+        assert dist_matrix.dtype in [np.uint32, np.uint64], "Input matrin must be in one of numpy's unsigned integer types (np.uint32, np.uint64)"
+        self.G = networkx.DiGraph()
+
+        x_dim, y_dim = dist_matrix.shape
+        self.x_dim = x_dim
+        self.y_dim = y_dim
+
+        for x in range(x_dim):
+            for y in range(y_dim):
+                self.G.add_edge(f"src{x}", f"tgt{y}", capacity=1, weight=dist_matrix[x,y])
+
+        for x in range(x_dim):
+            self.G.add_edge("source", f"src{x}", capacity=1, weight=0)
+
+        for y in range(y_dim):
+            self.G.add_edge(f"tgt{y}", "sink", capacity=1, weight=0)
+
+        self.mfmc = networkx.max_flow_min_cost(self.G, 'source', 'sink')
+
+    def cost(self):
+        tot_cost = 0.0
+        for start_n, neigh in self.mfmc.items():
+            for end_n, fl_v in neigh.items():
+                tot_cost += fl_v * self.G.edges[start_n, end_n]['weight']
+        return tot_cost
+
+    def flows(self):
+        ret = np.full(self.x_dim, -1)
+        for start_n, neigh in self.mfmc.items():
+            if start_n[:3] != 'src':
+                continue
+            start_idx = int(start_n[3:])
+            for end_n, fl_v in neigh.items():
+                if end_n[:3] != 'tgt':
+                    continue
+                end_idx = int(end_n[3:])
+                if fl_v > 0:
+                    assert ret[start_idx] == -1 and fl_v == 1, "Something is wrong, this shouldn't happen"
+                    ret[start_idx] = end_idx
+        return ret
+
+#if __name__ == '__main__':
+if False:
     EXP = [ 
             ((0.0, 0.0), 2.0),
             ((1.0, 2.0), 4.0),
@@ -170,3 +215,10 @@ if __name__ == '__main__':
     import scipy.optimize
 
     print(scipy.optimize.minimize(wasserstein_distancer.value_at, [12.0, 15.0], jac=wasserstein_distancer.gradient_at, method='SLSQP'))
+
+
+if __name__ == '__main__':
+    in_m = np.matrix([[1,2],[3,4], [1,2]], dtype=np.uint32)
+    WS = MatrixDistance(in_m)
+    print(WS.cost())
+    print(WS.flows())
