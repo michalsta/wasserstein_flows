@@ -9,6 +9,6 @@ setup(name='wasserstein_flows',
       author_email='michal.startek@mimuw.edu.pl',
       url='https://github.com/michalsta/wasserstein_flows',
       packages=['wasserstein_flows'],
-      install_requires=['cppyy', 'networkx', 'IsoSpecPy', 'numpy', 'tqdm']
+      install_requires=['networkx', 'IsoSpecPy', 'numpy', 'tqdm']
      )
 
